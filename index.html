@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>シンプル・クリッカー</title>
+    <style>
+        /* 全体のリセットと基本設定 */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #1a1a20;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            /* 連打時のテキスト選択やダブルタップ拡大を防止 */
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        /* ヘッダー・スコア表示 */
+        header {
+            margin-top: 10vh;
+            text-align: center;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            color: #00d2ff;
+            letter-spacing: 2px;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+        }
+
+        .score-display {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
+        }
+
+        /* メインボタン（画面中央） */
+        .click-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        .main-button {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #1e1e25, #19191d);
+            box-shadow: 20px 20px 40px #121216, -20px -20px 40px #22222a;
+            border: 2px solid #2a2a35;
+            color: #00d2ff;
+            font-size: 1.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ボタンを押したときの沈み込むエフェクト */
+        .main-button:active {
+            transform: scale(0.92);
+            box-shadow: inset 10px 10px 20px #121216, inset -10px -10px 20px #22222a;
+            border: 2px solid #00d2ff;
+        }
+
+        /* ショップエリア（画面下部） */
+        .shop-container {
+            width: 90%;
+            max-width: 400px;
+            background-color: #25252e;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 5vh;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .shop-title {
+            font-size: 1rem;
+            color: #888;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .item-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .item-count {
+            font-size: 0.9rem;
+            color: #00d2ff;
+        }
+
+        .buy-button {
+            background-color: #00d2ff;
+            color: #1a1a20;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .buy-button:active {
+            transform: scale(0.9);
+        }
+
+        /* スコア不足時のボタンデザイン */
+        .buy-button:disabled {
+            background-color: #3a3a45;
+            color: #777;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Neon Clicker</h1>
+        <div class="score-display"><span id="score">0</span></div>
+    </header>
+
+    <div class="click-area">
+        <button class="main-button" id="clickBtn">TAP!</button>
+    </div>
+
+    <div class="shop-container">
+        <div class="shop-title">UPGRADES</div>
+        <div class="shop-item">
+            <div class="item-info">
+                <span class="item-name">オートクリッカー</span>
+                <span class="item-count">所持数: <span id="autoCount">0</span> (毎秒+<span id="autoRate">0</span>)</span>
+            </div>
+            <button class="buy-button" id="buyBtn">Cost: <span id="autoCost">10</span></button>
+        </div>
+    </div>
+
+    <script>
+        // ゲームのデータ
+        let score = 0;           // 現在のスコア
+        let autoClickers = 0;    // オートクリッカーの所持数
+        let autoCost = 10;       // 次のオートクリッカーの値段
+
+        // HTML要素の取得
+        const scoreElement = document.getElementById('score');
+        const clickBtn = document.getElementById('clickBtn');
+        const buyBtn = document.getElementById('buyBtn');
+        const autoCountElement = document.getElementById('autoCount');
+        const autoRateElement = document.getElementById('autoRate');
+        const autoCostElement = document.getElementById('autoCost');
+
+        // 画面の表示を更新する関数
+        function updateDisplay() {
+            scoreElement.textContent = score;
+            autoCountElement.textContent = autoClickers;
+            autoRateElement.textContent = autoClickers;
+            autoCostElement.textContent = autoCost;
+
+            // スコアが足りない場合は購入ボタンを灰色（無効化）にする
+            if (score >= autoCost) {
+                buyBtn.disabled = false;
+            } else {
+                buyBtn.disabled = true;
+            }
+        }
+
+        // 中央の大きなボタンをクリックした時の処理
+        clickBtn.addEventListener('click', () => {
+            score++;
+            updateDisplay();
+        });
+
+        // ショップの購入ボタンをクリックした時の処理
+        buyBtn.addEventListener('click', () => {
+            if (score >= autoCost) {
+                score -= autoCost;          // スコアを消費
+                autoClickers++;             // 所持数を増やす
+                autoCost = Math.floor(autoCost * 1.5); // 値段を1.5倍にする（小数点切り捨て）
+                updateDisplay();
+            }
+        });
+
+        // オートクリッカーの処理（1000ミリ秒 = 1秒ごとに実行）
+        setInterval(() => {
+            if (autoClickers > 0) {
+                score += autoClickers;
+                updateDisplay();
+            }
+        }, 1000);
+
+        // ゲーム起動時に1回表示を更新しておく
+        updateDisplay();
+    </script>
+</body>
+</html>
